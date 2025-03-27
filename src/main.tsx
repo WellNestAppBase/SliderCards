@@ -7,7 +7,10 @@ import { BrowserRouter } from "react-router-dom";
 import { TempoDevtools } from "tempo-devtools";
 TempoDevtools.init();
 
-const basename = import.meta.env.BASE_URL;
+// Ensure basename is correctly set for all environments
+const basename =
+  import.meta.env.VITE_BASE_PATH || import.meta.env.BASE_URL || "/";
+console.log("Using basename:", basename);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
