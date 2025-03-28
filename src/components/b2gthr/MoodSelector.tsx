@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import { updateUserMood } from "../../services/profileService";
 
 export interface MoodOption {
   name: string;
@@ -22,13 +24,25 @@ const MoodSelector: React.FC<MoodSelectorProps> = ({
   showContextPrompt = false,
   onContextSubmit = () => {},
 }) => {
+  const { user } = useAuth();
   const [showContext, setShowContext] = React.useState(false);
   const [context, setContext] = React.useState("");
+
+  // Update mood in database when it changes (without context)
+  useEffect(() => {
+    if (user && !showContext) {
+      // Only update if we're not waiting for context input
+      updateUserMood(user.id, currentMood);
+    }
+  }, [currentMood, user, showContext]);
 
   const handleMoodSelect = (index: number) => {
     setCurrentMood(index);
     if (showContextPrompt) {
       setShowContext(true);
+    } else if (user) {
+      // If we're not showing context prompt, update immediately
+      updateUserMood(user.id, index);
     }
   };
 
@@ -36,40 +50,46 @@ const MoodSelector: React.FC<MoodSelectorProps> = ({
     onContextSubmit(context);
     setShowContext(false);
     setContext("");
+    console.log(`Mood selected: ${currentMood}, Context: ${context}`);
+
+    // Update mood with context in database
+    if (user) {
+      updateUserMood(user.id, currentMood, context);
+    }
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full rounded-b-lg overflow-hidden">
       {showContext && (
-        <div className="mb-4 p-3 bg-black/30 backdrop-blur-sm rounded-lg">
+        <div className="mb-4 p-3.5 bg-black/40 backdrop-blur-md rounded-lg border border-white/10 shadow-inner">
           <p className="text-sm mb-2">
             How are you feeling? (Optional context)
           </p>
           <textarea
             value={context}
             onChange={(e) => setContext(e.target.value)}
-            className="w-full p-2 bg-gray-800/70 border border-gray-700 rounded-md text-sm mb-2"
+            className="w-full p-2.5 bg-gray-800/80 border border-gray-600 rounded-md text-sm mb-2 focus:ring-1 focus:ring-white/30 focus:outline-none shadow-inner"
             placeholder={`Why are you feeling ${moodOptions[currentMood]?.name?.toLowerCase() || "this way"}?`}
             rows={2}
           />
           <div className="flex justify-end gap-2">
             <button
               onClick={() => setShowContext(false)}
-              className="px-3 py-1 text-xs rounded-md bg-gray-700 hover:bg-gray-600"
+              className="px-3.5 py-1.5 text-xs rounded-md bg-gray-700 hover:bg-gray-600 transition-colors shadow-sm"
             >
               Skip
             </button>
             <button
               onClick={handleContextSubmit}
-              className="px-3 py-1 text-xs rounded-md bg-cyan-600 hover:bg-cyan-500"
+              className="px-3.5 py-1.5 text-xs rounded-md bg-cyan-600 hover:bg-cyan-500 transition-colors shadow-sm"
             >
               Save
             </button>
           </div>
         </div>
       )}
-      <div className="flex flex-col w-full">
-        <div className="relative flex w-full h-16 mt-2">
+      <div className="flex flex-col w-full border-t border-white/10 pt-1.5 mt-1">
+        <div className="relative flex w-full h-16 mt-1.5 rounded-b-lg overflow-hidden shadow-md">
           {" "}
           {/* Increased height to accommodate text */}
           {moodOptions.map((mood, idx) => {
@@ -86,7 +106,7 @@ const MoodSelector: React.FC<MoodSelectorProps> = ({
                 title={mood?.name || "Mood option"}
               >
                 <div
-                  className={`absolute top-0 w-full transition-all duration-300 flex items-center justify-center ${isSelected ? "h-16 rounded-b-lg" : "h-12 rounded-b-md"}`}
+                  className={`absolute top-0 w-full transition-all duration-300 flex items-center justify-center ${isSelected ? "h-16 rounded-b-lg shadow-inner" : "h-12 rounded-b-md"}`}
                   style={{
                     backgroundColor: mood?.color || "#888888",
                     opacity: isSelected ? 1 : 0.7,
@@ -98,7 +118,7 @@ const MoodSelector: React.FC<MoodSelectorProps> = ({
                   }}
                 >
                   <span
-                    className={`text-xs font-medium ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-70"} transition-opacity duration-200 ${mood?.textClass || ""} text-center px-1 whitespace-nowrap overflow-hidden text-ellipsis max-w-full`}
+                    className={`text-xs font-semibold ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-70"} transition-opacity duration-200 ${mood?.textClass || ""} text-center px-1.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-full`}
                     style={{
                       textShadow: "0px 1px 2px rgba(0,0,0,0.3)",
                     }}

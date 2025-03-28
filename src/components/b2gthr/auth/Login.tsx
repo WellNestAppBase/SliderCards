@@ -1,14 +1,21 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoodOption } from "../MoodSelector";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Login: React.FC = () => {
-  const navigate = useNavigate();
+  const { signIn, error: authError, loading, clearError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [validationError, setValidationError] = useState("");
+
+  // Clear errors when component mounts or unmounts
+  useEffect(() => {
+    clearError();
+    return () => clearError();
+  }, [clearError]);
 
   // Mood options from B2GTHR component
   const moodOptions: MoodOption[] = [
@@ -58,19 +65,26 @@ const Login: React.FC = () => {
   // Use Calm and Peaceful mood for login page
   const currentMood = 1;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    clearError();
+    setValidationError("");
 
     // Basic validation
     if (!email || !password) {
-      setError("Please fill in all fields");
+      setValidationError("Please fill in all fields");
       return;
     }
 
-    // For demo purposes, just navigate to the B2GTHR app
-    // In a real app, you would authenticate with a backend
-    navigate("/b2gthr");
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setValidationError("Please enter a valid email address");
+      return;
+    }
+
+    // Authenticate with Supabase
+    await signIn(email, password);
   };
 
   return (
@@ -97,9 +111,9 @@ const Login: React.FC = () => {
           <p className="text-sm opacity-80 mt-1">Sign in to your account</p>
         </div>
 
-        {error && (
+        {(validationError || authError) && (
           <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-sm">
-            {error}
+            {validationError || authError?.message}
           </div>
         )}
 
@@ -115,6 +129,7 @@ const Login: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
               placeholder="you@example.com"
+              disabled={loading}
             />
           </div>
 
@@ -132,6 +147,7 @@ const Login: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
               placeholder="••••••••"
+              disabled={loading}
             />
           </div>
 
@@ -148,17 +164,18 @@ const Login: React.FC = () => {
               </label>
             </div>
             <div className="text-sm">
-              <a href="#" className="hover:underline">
+              <Link to="/forgot-password" className="hover:underline">
                 Forgot password?
-              </a>
+              </Link>
             </div>
           </div>
 
           <Button
             type="submit"
             className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm py-5"
+            disabled={loading}
           >
-            Sign in
+            {loading ? "Signing in..." : "Sign in"}
           </Button>
 
           <div className="text-center text-sm mt-4">

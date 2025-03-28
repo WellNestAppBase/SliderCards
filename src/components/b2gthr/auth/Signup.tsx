@@ -1,16 +1,24 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoodOption } from "../MoodSelector";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Signup: React.FC = () => {
-  const navigate = useNavigate();
+  const { signUp, error: authError, loading, clearError } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
+  const [validationError, setValidationError] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
+  // Clear errors when component mounts or unmounts
+  useEffect(() => {
+    clearError();
+    return () => clearError();
+  }, [clearError]);
 
   // Mood options from B2GTHR component
   const moodOptions: MoodOption[] = [
@@ -60,24 +68,43 @@ const Signup: React.FC = () => {
   // Use Deeply Serene mood for signup page
   const currentMood = 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    clearError();
+    setValidationError("");
 
     // Basic validation
     if (!name || !email || !password || !confirmPassword) {
-      setError("Please fill in all fields");
+      setValidationError("Please fill in all fields");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setValidationError("Passwords do not match");
       return;
     }
 
-    // For demo purposes, just navigate to the B2GTHR app
-    // In a real app, you would register with a backend
-    navigate("/b2gthr");
+    if (password.length < 8) {
+      setValidationError("Password must be at least 8 characters long");
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setValidationError("Please enter a valid email address");
+      return;
+    }
+
+    if (!termsAccepted) {
+      setValidationError(
+        "You must accept the Terms of Service and Privacy Policy",
+      );
+      return;
+    }
+
+    // Register with Supabase
+    await signUp(email, password, name);
   };
 
   return (
@@ -106,9 +133,9 @@ const Signup: React.FC = () => {
           </p>
         </div>
 
-        {error && (
+        {(validationError || authError) && (
           <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-md text-sm">
-            {error}
+            {validationError || authError?.message}
           </div>
         )}
 
@@ -124,6 +151,7 @@ const Signup: React.FC = () => {
               onChange={(e) => setName(e.target.value)}
               className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
               placeholder="John Doe"
+              disabled={loading}
             />
           </div>
 
@@ -138,6 +166,7 @@ const Signup: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
               placeholder="you@example.com"
+              disabled={loading}
             />
           </div>
 
@@ -155,7 +184,11 @@ const Signup: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
               placeholder="••••••••"
+              disabled={loading}
             />
+            <p className="text-xs mt-1 opacity-70">
+              Must be at least 8 characters
+            </p>
           </div>
 
           <div>
@@ -172,6 +205,7 @@ const Signup: React.FC = () => {
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
               placeholder="••••••••"
+              disabled={loading}
             />
           </div>
 
@@ -181,7 +215,9 @@ const Signup: React.FC = () => {
               name="terms"
               type="checkbox"
               className="h-4 w-4 rounded border-white/20 bg-white/10"
-              required
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              disabled={loading}
             />
             <label htmlFor="terms" className="ml-2 block text-sm">
               I agree to the{" "}
@@ -198,8 +234,9 @@ const Signup: React.FC = () => {
           <Button
             type="submit"
             className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm py-5"
+            disabled={loading}
           >
-            Create Account
+            {loading ? "Creating Account..." : "Create Account"}
           </Button>
 
           <div className="text-center text-sm mt-4">

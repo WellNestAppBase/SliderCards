@@ -1,9 +1,20 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MoodOption } from "../MoodSelector";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Landing: React.FC = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect authenticated users to the B2GTHR app
+  useEffect(() => {
+    if (user && !loading) {
+      navigate("/b2gthr");
+    }
+  }, [user, loading, navigate]);
+
   // Mood options from B2GTHR component
   const moodOptions: MoodOption[] = [
     {
@@ -52,6 +63,20 @@ const Landing: React.FC = () => {
   // Default to Mild/Neutral mood for landing page
   const currentMood = 2;
 
+  if (loading) {
+    return (
+      <div
+        className={`min-h-screen w-full ${moodOptions[currentMood].textClass} overflow-hidden transition-colors duration-500 flex items-center justify-center`}
+        style={{ backgroundColor: moodOptions[currentMood].color }}
+      >
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-white/30 border-t-white/80 rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`min-h-screen w-full ${moodOptions[currentMood].textClass} overflow-hidden transition-colors duration-500 flex flex-col`}
@@ -99,12 +124,12 @@ const Landing: React.FC = () => {
                 Get Started
               </Button>
             </Link>
-            <Link to="/b2gthr">
+            <Link to="/login">
               <Button
                 variant="outline"
                 className="border-white/30 text-lg py-6 px-8"
               >
-                View Demo
+                Sign In
               </Button>
             </Link>
           </div>
@@ -169,7 +194,7 @@ const Landing: React.FC = () => {
 
       {/* Footer */}
       <footer className="relative z-10 p-6 text-center opacity-80 text-sm">
-        <p>© 2023 B2GTHR. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} B2GTHR. All rights reserved.</p>
       </footer>
     </div>
   );

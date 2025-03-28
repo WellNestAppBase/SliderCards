@@ -10,6 +10,8 @@ interface SlideCarouselProps {
   menuOpen?: boolean;
   setMenuOpen?: (open: boolean) => void;
   showMoodSelector?: boolean;
+  urgentMode?: boolean;
+  urgentPageIndex?: number;
 }
 
 const SlideCarousel: React.FC<SlideCarouselProps> = ({
@@ -19,6 +21,8 @@ const SlideCarousel: React.FC<SlideCarouselProps> = ({
   menuOpen = false,
   setMenuOpen = () => {},
   showMoodSelector = false,
+  urgentMode = false,
+  urgentPageIndex,
 }) => {
   const [currentPage, setCurrentPage] = useState(initialIndex);
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -34,6 +38,14 @@ const SlideCarousel: React.FC<SlideCarouselProps> = ({
       emblaApi.scrollTo(currentPage);
     }
   }, [currentPage, emblaApi]);
+
+  // Navigate to urgent page when urgentMode is activated
+  useEffect(() => {
+    if (urgentMode && urgentPageIndex !== undefined && emblaApi) {
+      setCurrentPage(urgentPageIndex);
+      emblaApi.scrollTo(urgentPageIndex);
+    }
+  }, [urgentMode, urgentPageIndex, emblaApi]);
 
   // Update currentPage when embla scrolls
   const onSelect = useCallback(() => {
@@ -161,16 +173,7 @@ const SlideCarousel: React.FC<SlideCarouselProps> = ({
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-black/20">
-      {/* Menu Toggle Button */}
-      <button
-        onClick={() => setMenuOpen(true)}
-        className="fixed top-3 left-3 z-40 bg-gray-800/70 text-white p-2 rounded-full hover:bg-gray-700/70"
-        aria-label="Open navigation menu"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
-
-      {/* Navigation Menu */}
+      {/* Navigation Menu - Hidden but kept for structure */}
       <NavigationMenu />
 
       {/* Carousel Navigation Buttons */}

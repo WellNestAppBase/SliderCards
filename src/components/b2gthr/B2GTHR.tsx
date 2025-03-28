@@ -3,25 +3,27 @@ import Loading from "../ui/loading";
 import Dashboard from "./cards/Dashboard";
 import WellStream from "./cards/WellStream";
 import ManageConnections from "./cards/ManageConnections";
-import SharedBoard from "./cards/SharedBoard";
-import Privacy from "./cards/Privacy";
+import GroupSettings from "./cards/GroupSettings";
 import ManageProfile from "./cards/ManageProfile";
 import MyVibeTrack from "./cards/MyVibeTrack";
 import ManageSettings from "./cards/ManageSettings";
 import Help from "./cards/Help";
+import UrgentHelp from "./cards/UrgentHelp";
 import { MoodOption } from "./MoodSelector";
 import SlideCarousel from "./SlideCarousel";
 import CardContent from "./CardContent";
 import MoodSelector from "./MoodSelector";
+import { TransitionBackground } from "./animated_backgrounds";
 
 const B2GTHR: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);
+
+  // State to track if urgent help page should be shown
+  const [showUrgentHelp, setShowUrgentHelp] = useState(false);
 
   // Page titles for navigation
   const pageTitles = [
-    "Privacy",
-    "SharedBoard",
+    "Group Settings",
     "Manage Connections",
     "WellStream",
     "Dashboard", // Center card (index 4)
@@ -29,6 +31,7 @@ const B2GTHR: React.FC = () => {
     "MyVibeTrack",
     "Manage Settings",
     "Help",
+    ...(showUrgentHelp ? ["Urgent Help"] : []),
   ];
 
   // Mood options with emotional context
@@ -78,11 +81,17 @@ const B2GTHR: React.FC = () => {
 
   // Current mood state
   const [currentMood, setCurrentMood] = useState(2); // Default to Mild/Neutral
+  const [previousMood, setPreviousMood] = useState<number | null>(null);
   const [moodContext, setMoodContext] = useState("");
 
   // Handle mood change with transition
   const handleMoodChange = (index: number) => {
+    setPreviousMood(currentMood);
     setCurrentMood(index);
+
+    // Check if the mood is Urgent (index 5) and show the urgent help page
+    setShowUrgentHelp(index === 5); // Index 5 is "Urgent"
+
     // Apply transition class to body for global effect
     document.body.classList.add("mood-transition");
     setTimeout(() => {
@@ -119,20 +128,9 @@ const B2GTHR: React.FC = () => {
 
   // Create an array of card components to pass to the carousel
   const cardComponents = [
-    // Privacy (-4)
-    <CardContent key="privacy" title="Privacy">
-      <Privacy
-        currentMood={currentMood}
-        setCurrentMood={handleMoodChange}
-        moodOptions={moodOptions}
-        onContextSubmit={handleContextSubmit}
-        cardStyle={{}}
-      />
-    </CardContent>,
-
-    // SharedBoard (-3)
-    <CardContent key="sharedboard" title="SharedBoard">
-      <SharedBoard
+    // Group Settings (-3)
+    <CardContent key="groupsettings" title="Group Settings">
+      <GroupSettings
         currentMood={currentMood}
         setCurrentMood={handleMoodChange}
         moodOptions={moodOptions}
@@ -217,28 +215,50 @@ const B2GTHR: React.FC = () => {
         cardStyle={{}}
       />
     </CardContent>,
+
+    // Urgent Help (+5) - Only shown when in urgent mode
+    ...(showUrgentHelp
+      ? [
+          <CardContent key="urgenthelp" title="Urgent Help">
+            <UrgentHelp
+              currentMood={currentMood}
+              setCurrentMood={handleMoodChange}
+              moodOptions={moodOptions}
+              onContextSubmit={handleContextSubmit}
+              cardStyle={{}}
+            />
+          </CardContent>,
+        ]
+      : []),
   ];
 
   return (
     <div
       className={`relative h-screen w-screen ${moodOptions[currentMood].textClass} overflow-hidden transition-all duration-700`}
-      style={{ backgroundColor: moodOptions[currentMood].color }}
     >
-      {/* Global glow effect */}
+      {/* Animated background with transition */}
+      <TransitionBackground
+        currentMood={currentMood}
+        previousMood={previousMood}
+        transitionDuration={700}
+      />
+
+      {/* Enhanced global glow effect with improved gradient */}
       <div
-        className="absolute inset-0 blur-[118px] max-w-3xl h-[600px] mx-auto transition-all duration-1000"
+        className="absolute inset-0 blur-[125px] max-w-4xl h-[650px] mx-auto transition-all duration-1000 z-0"
         style={{
-          background: `linear-gradient(106.89deg, ${moodOptions[currentMood].color}40 15.73%, ${moodOptions[(currentMood + 2) % 6].color}40 56.49%, ${moodOptions[(currentMood + 4) % 6].color}40 115.91%)`,
-          zIndex: 0,
+          background: `radial-gradient(circle at 50% 50%, ${moodOptions[currentMood].color}60 0%, ${moodOptions[(currentMood + 2) % 6].color}40 50%, ${moodOptions[(currentMood + 4) % 6].color}30 100%)`,
         }}
       ></div>
 
       {/* Main carousel for sliding pages */}
       <SlideCarousel
-        initialIndex={4} // Start at Dashboard (index 4)
+        initialIndex={3} // Start at Dashboard (index 3 now that we removed Privacy)
         pageTitles={pageTitles}
-        menuOpen={menuOpen}
-        setMenuOpen={setMenuOpen}
+        menuOpen={false} // Always keep menu closed to remove sidebar
+        setMenuOpen={() => {}} // No-op function since we're removing the sidebar
+        urgentMode={showUrgentHelp}
+        urgentPageIndex={showUrgentHelp ? pageTitles.length - 1 : undefined}
       >
         {cardComponents}
       </SlideCarousel>
@@ -246,7 +266,22 @@ const B2GTHR: React.FC = () => {
       {/* Custom CSS for hiding scrollbar and adding transitions */}
       <style>{`
         div::-webkit-scrollbar {
-          display: none;
+          width: 6px;
+          height: 6px;
+        }
+        
+        div::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+        }
+        
+        div::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 10px;
+        }
+        
+        div::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
         }
         
         .mood-transition {

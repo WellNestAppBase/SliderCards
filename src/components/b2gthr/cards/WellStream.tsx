@@ -1,6 +1,13 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import SlideCard from "../SlideCard";
 import { MoodOption } from "../MoodSelector";
+import {
+  useRealtimeMoodUpdates,
+  Connection,
+} from "../../../hooks/useRealtimeMoodUpdates";
+import { useAuth } from "../../../contexts/AuthContext";
+import { updateUserMood } from "../../../services/profileService";
+import { fetchSharedBoard } from "../../../services/sharedBoardService";
 
 interface WellStreamProps {
   currentMood: number;
@@ -17,8 +24,13 @@ const WellStream: React.FC<WellStreamProps> = ({
   onContextSubmit,
   cardStyle,
 }) => {
-  // Mock data for connections
-  const connections = [
+  const { user } = useAuth();
+  const [selectedConnectionId, setSelectedConnectionId] = useState<
+    number | null
+  >(null);
+
+  // Initial mock data for connections
+  const initialConnections = [
     {
       id: 1,
       name: "Emma Rodriguez",
@@ -77,6 +89,37 @@ const WellStream: React.FC<WellStreamProps> = ({
     },
   ];
 
+  // Use the custom hook for real-time mood updates
+  const { connections, loading } = useRealtimeMoodUpdates(initialConnections);
+
+  // Log when real-time updates are received
+  useEffect(() => {
+    console.log("WellStream received updated connections:", connections);
+  }, [connections]);
+
+  // Update user's mood in the database when it changes
+  useEffect(() => {
+    if (user) {
+      updateUserMood(user.id, currentMood);
+    }
+  }, [currentMood, user]);
+
+  // Handle viewing a shared board
+  const handleViewSharedBoard = (connection: Connection) => {
+    if (connection.sharedBoardId) {
+      setSelectedConnectionId(connection.id);
+
+      // In a real implementation, you would navigate to the SharedBoard component
+      // and pass the connection ID as a parameter
+      console.log(
+        `Viewing shared board with ${connection.name}, ID: ${connection.sharedBoardId}`,
+      );
+
+      // This would typically be handled by a router or state management system
+      // For now, we'll just log it
+    }
+  };
+
   // Sort connections to prioritize urgent moods
   const sortedConnections = [...connections].sort((a, b) => {
     // Prioritize urgent moods (5) at the top
@@ -95,7 +138,13 @@ const WellStream: React.FC<WellStreamProps> = ({
       currentMood={currentMood}
       setCurrentMood={setCurrentMood}
       moodOptions={moodOptions}
-      onContextSubmit={onContextSubmit}
+      onContextSubmit={(context) => {
+        onContextSubmit(context);
+        // Update the mood context in the database if user is logged in
+        if (user) {
+          updateUserMood(user.id, currentMood, context);
+        }
+      }}
       cardStyle={cardStyle}
     >
       <div className="space-y-4">
@@ -155,14 +204,47 @@ const WellStream: React.FC<WellStreamProps> = ({
                 </div>
               </div>
               <div className="flex justify-end gap-2 mt-3">
-                <button className="px-3 py-1.5 rounded-md bg-black/30 hover:bg-black/50 text-sm">
+                <button
+                  onClick={() => console.log(`Message ${connection.name}`)}
+                  className="px-3 py-1.5 rounded-md bg-black/30 hover:bg-black/50 text-sm"
+                >
                   Message
                 </button>
-                <button className="px-3 py-1.5 rounded-md bg-black/30 hover:bg-black/50 text-sm">
+                <button
+                  onClick={() => console.log(`Call ${connection.name}`)}
+                  className="px-3 py-1.5 rounded-md bg-black/30 hover:bg-black/50 text-sm"
+                >
                   Call
                 </button>
+                {connection.sharedBoardId ? (
+                  <button
+                    onClick={() => handleViewSharedBoard(connection)}
+                    className="px-3 py-1.5 rounded-md bg-cyan-600 hover:bg-cyan-500 text-sm flex items-center gap-1"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    Shared Board
+                  </button>
+                ) : null}
                 {connection.mood >= 4 && (
-                  <button className="px-3 py-1.5 rounded-md bg-cyan-600 hover:bg-cyan-500 text-sm">
+                  <button
+                    onClick={() =>
+                      console.log(`Check in with ${connection.name}`)
+                    }
+                    className="px-3 py-1.5 rounded-md bg-cyan-600 hover:bg-cyan-500 text-sm"
+                  >
                     Check In
                   </button>
                 )}

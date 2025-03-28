@@ -2,6 +2,12 @@ import React, { useState, useEffect } from "react";
 import SlideCard from "../SlideCard";
 import { MoodOption } from "../MoodSelector";
 import { MessageCircle, Phone, AlertTriangle } from "lucide-react";
+import {
+  useRealtimeMoodUpdates,
+  Connection,
+} from "../../../hooks/useRealtimeMoodUpdates";
+import { useAuth } from "../../../contexts/AuthContext";
+import { updateUserMood } from "../../../services/profileService";
 
 interface DashboardProps {
   currentMood: number;
@@ -11,15 +17,6 @@ interface DashboardProps {
   cardStyle: React.CSSProperties;
 }
 
-interface Connection {
-  id: number;
-  name: string;
-  mood: number;
-  lastUpdated: string;
-  avatar: string;
-  context: string;
-}
-
 const Dashboard: React.FC<DashboardProps> = ({
   currentMood,
   setCurrentMood,
@@ -27,11 +24,28 @@ const Dashboard: React.FC<DashboardProps> = ({
   onContextSubmit,
   cardStyle,
 }) => {
+  const { user } = useAuth();
   const [userName, setUserName] = useState("Samuel");
   const [userAvatar, setUserAvatar] = useState(
     "https://api.dicebear.com/7.x/avataaars/svg?seed=samuel",
   );
-  const [connections, setConnections] = useState<Connection[]>([
+
+  // Update user info from auth context
+  useEffect(() => {
+    if (user) {
+      // Get user's name from metadata if available
+      const fullName = user.user_metadata?.full_name || userName;
+      setUserName(fullName);
+
+      // Create avatar based on user ID for consistency
+      setUserAvatar(
+        `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+      );
+    }
+  }, [user]);
+
+  // Initial mock data for connections
+  const initialConnections = [
     {
       id: 1,
       name: "Emma Rodriguez",
@@ -72,7 +86,22 @@ const Dashboard: React.FC<DashboardProps> = ({
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=alex",
       context: "Enjoying a peaceful weekend",
     },
-  ]);
+  ];
+
+  // Use the custom hook for real-time mood updates
+  const { connections, loading } = useRealtimeMoodUpdates(initialConnections);
+
+  // Log when real-time updates are received
+  useEffect(() => {
+    console.log("Dashboard received updated connections:", connections);
+  }, [connections]);
+
+  // Update user's mood in the database when it changes
+  useEffect(() => {
+    if (user) {
+      updateUserMood(user.id, currentMood);
+    }
+  }, [currentMood, user]);
 
   // Check if any connections have urgent mood
   const hasUrgentConnections = connections.some((conn) => conn.mood === 5);
@@ -89,12 +118,23 @@ const Dashboard: React.FC<DashboardProps> = ({
     return 0;
   });
 
-  // Calculate average mood for the whirlpool visualization
-  const averageMood =
-    connections.length > 0
-      ? connections.reduce((sum, conn) => sum + conn.mood, 0) /
-        connections.length
-      : 2; // Default to neutral if no connections
+  // Calculate average mood for the whirlpool visualization with weighted urgency
+  const averageMood = (() => {
+    if (connections.length === 0) return 2; // Default to neutral if no connections
+
+    // Count urgent moods (5) with higher weight to emphasize them
+    const urgentCount = connections.filter((conn) => conn.mood === 5).length;
+    const urgentWeight = 1.5; // Urgent moods count 1.5x more
+
+    // Calculate weighted sum
+    const weightedSum = connections.reduce((sum, conn) => {
+      return sum + (conn.mood === 5 ? conn.mood * urgentWeight : conn.mood);
+    }, 0);
+
+    // Calculate weighted average
+    const weightedTotal = connections.length + urgentCount * (urgentWeight - 1);
+    return weightedSum / weightedTotal;
+  })();
 
   // Helper function to get time of day for greeting
   const getTimeOfDay = () => {
@@ -110,13 +150,23 @@ const Dashboard: React.FC<DashboardProps> = ({
     // In a real app, this would open a messaging interface or initiate a call
   };
 
+  // Handle mood context submission - update in database
+  const handleMoodContextSubmit = (context: string) => {
+    onContextSubmit(context);
+
+    // Update the mood context in the database if user is logged in
+    if (user) {
+      updateUserMood(user.id, currentMood, context);
+    }
+  };
+
   return (
     <SlideCard
       title="Dashboard"
       currentMood={currentMood}
       setCurrentMood={setCurrentMood}
       moodOptions={moodOptions}
-      onContextSubmit={onContextSubmit}
+      onContextSubmit={handleMoodContextSubmit}
       cardStyle={cardStyle}
     >
       <div className="space-y-6 animate-fadeIn">
@@ -203,14 +253,45 @@ const Dashboard: React.FC<DashboardProps> = ({
               {/* Water-like reflections */}
               <div className="absolute top-1/4 left-1/4 w-1/5 h-1/5 bg-white/20 rounded-full blur-sm animate-float"></div>
               <div className="absolute bottom-1/3 right-1/3 w-1/6 h-1/6 bg-white/10 rounded-full blur-sm animate-float-slow"></div>
+
+              {/* Additional dynamic ripples based on mood intensity */}
+              {averageMood > 3 && (
+                <div
+                  className="absolute inset-0 animate-pulse rounded-full opacity-30"
+                  style={{
+                    background: `radial-gradient(circle, ${moodOptions[Math.round(averageMood)].color}90, transparent 80%)`,
+                    animationDuration: `${3 - (averageMood - 3)}s`, // Faster pulse for more urgent moods
+                  }}
+                ></div>
+              )}
             </div>
           </div>
 
           <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+            {/* Connection count summary */}
+            <div className="text-center text-sm opacity-70 mb-2">
+              {connections.length > 0 ? (
+                <>
+                  <span className="font-medium">{connections.length}</span>{" "}
+                  connection{connections.length !== 1 ? "s" : ""}
+                  {hasUrgentConnections && (
+                    <span className="text-red-300 ml-1">
+                      •{" "}
+                      <span className="font-medium">
+                        {connections.filter((c) => c.mood === 5).length}
+                      </span>{" "}
+                      urgent
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span>No connections yet</span>
+              )}
+            </div>
             {sortedConnections.map((connection) => (
               <div
                 key={connection.id}
-                className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ${connection.mood === 5 ? "bg-red-900/30 border border-red-800/30 animate-pulse-subtle" : "bg-black/20 border border-white/10 hover:bg-black/30"}`}
+                className={`flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ${connection.mood === 5 ? "bg-red-900/30 border border-red-800/30 animate-pulse-subtle" : connection.mood === 4 ? "bg-amber-900/20 border border-amber-800/20" : "bg-black/20 border border-white/10 hover:bg-black/30"}`}
               >
                 <div className="relative">
                   <div className="w-12 h-12 rounded-full overflow-hidden border border-white/30 transition-transform hover:scale-105">
@@ -236,6 +317,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                           <AlertTriangle className="h-4 w-4" />
                         </span>
                       )}
+                      {connection.mood === 4 && (
+                        <span className="ml-2 text-amber-400">
+                          <AlertTriangle className="h-4 w-4 opacity-80" />
+                        </span>
+                      )}
                     </h4>
                     <span className="text-xs opacity-70">
                       {connection.lastUpdated}
@@ -244,6 +330,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <p className="text-sm opacity-80">
                     {connection.mood === 5 ? (
                       <span className="text-red-300 font-medium">
+                        {moodOptions[connection.mood].name}
+                      </span>
+                    ) : connection.mood === 4 ? (
+                      <span className="text-amber-300 font-medium">
+                        {moodOptions[connection.mood].name}
+                      </span>
+                    ) : connection.mood <= 1 ? (
+                      <span className="text-blue-300 font-medium">
                         {moodOptions[connection.mood].name}
                       </span>
                     ) : (
@@ -279,7 +373,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* Add custom animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;

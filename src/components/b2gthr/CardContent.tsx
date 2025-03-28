@@ -14,15 +14,15 @@ const CardContent: React.FC<CardContentProps> = ({
   showFooter = false,
   compact = true,
 }) => {
-  // Get card style with a subtle glow
+  // Get card style with enhanced visual effects
   const getCardStyle = () => {
     return {
-      background: "rgba(0, 0, 0, 0.4)",
-      backdropFilter: "blur(8px)",
-      borderRadius: "12px",
-      border: "1px solid rgba(255, 255, 255, 0.3)",
-      boxShadow: `0 0 15px rgba(255, 255, 255, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.1)`,
-      transition: "background 0.5s ease, box-shadow 0.5s ease",
+      background: "rgba(0, 0, 0, 0.45)",
+      backdropFilter: "blur(10px)",
+      borderRadius: "14px",
+      border: "1px solid rgba(255, 255, 255, 0.35)",
+      boxShadow: `0 4px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(255, 255, 255, 0.2), inset 0 0 25px rgba(255, 255, 255, 0.08)`,
+      transition: "all 0.5s ease",
     };
   };
 
@@ -35,23 +35,23 @@ const CardContent: React.FC<CardContentProps> = ({
       transition={{ duration: 0.3 }}
     >
       <div
-        className={`card-content w-full mx-auto ${compact ? "p-1.5" : "p-2"} relative overflow-auto flex flex-col`}
+        className={`card-content w-full mx-auto ${compact ? "p-2" : "p-3"} relative overflow-auto flex flex-col shadow-lg`}
         style={getCardStyle()}
       >
         {/* Card Header - Swipe Area */}
         <div
-          className={`${compact ? "mb-0.5 pb-0.5" : "mb-1 pb-1"} border-b border-white/10`}
+          className={`${compact ? "mb-1 pb-1" : "mb-2 pb-2"} border-b border-white/20`}
         >
           {/* Title removed to prevent duplication */}
         </div>
 
         {/* Card Content */}
-        <div className="flex-grow overflow-auto">{children}</div>
+        <div className="flex-grow overflow-auto px-1">{children}</div>
 
         {/* Card Footer - Optional */}
         {showFooter && (
           <div
-            className={`mt-auto ${compact ? "pt-1" : "pt-2"} border-t border-white/10`}
+            className={`mt-auto ${compact ? "pt-1.5" : "pt-2.5"} border-t border-white/20`}
           >
             <div className="text-sm text-center opacity-70">
               Swipe or use arrow keys to navigate
